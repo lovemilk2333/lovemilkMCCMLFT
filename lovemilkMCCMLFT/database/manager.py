@@ -5,6 +5,7 @@ if sys.platform == 'win32':
 import subprocess
 from pathlib import Path
 from typing import Literal
+from functools import cached_property
 
 
 class Manager:
@@ -19,7 +20,7 @@ class Manager:
         self.encoding = encoding
         self.suffix = suffix
 
-    @property
+    @cached_property
     def hosts_file(self) -> Path:
         return (
             Path(os.getenv('windir', 'C:/Windows')) / 'System32/drivers/etc/hosts'
@@ -37,23 +38,31 @@ class Manager:
                 return value if Path(value).is_file() else (Path(os.getenv('windir', 'C:/Windows')) / 'notepad')
 
     def open_hosts(self):
-        command = f'konsole -e "{os.getenv("EDITOR", "vim")} {self.hosts_file}"'  # *nix / MacOS
-
         if sys.platform == 'win32':
             command = f'start {self.default_open_with(".txt")} {self.hosts_file}'
-
-        # *nix and MacOS untested
-        # Default use system default editor open in the new Konsole
-        subprocess.Popen(
-            command,
-            close_fds=True,
-            start_new_session=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            stdin=subprocess.DEVNULL,
-            shell=True
-        )
-
+            subprocess.Popen(
+                command,
+                close_fds=True,
+                start_new_session=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+                shell=True
+            )
+        elif sys.platform == 'darwin':
+            subprocess.Popen(
+                ['open', self.hosts_file.as_posix()],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+            )
+        else:
+            subprocess.Popen(
+                ['xdg-open', self.hosts_file.as_posix()],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+            )
 
     def read(self):
         with self.hosts_file.open('r', encoding=self.encoding) as fp:
